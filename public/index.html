@@ -1,223 +1,859 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>DescGen — Product Descriptions That Sell</title>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>DescGen AI — Product Descriptions That Sell</title>
+
+<meta name="description" content="Generate high-converting AI product descriptions for Shopify, Amazon, Etsy and WooCommerce.">
+
+<meta name="theme-color" content="#050816">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
 <style>
-  * { box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    margin: 0;
-    background: #faf7f2;
-    color: #2b2620;
-  }
-  header {
-    padding: 32px 20px 16px;
-    text-align: center;
-  }
-  header h1 {
-    margin: 0 0 8px;
-    font-size: 2rem;
-  }
-  header p {
-    color: #6b6259;
-    margin: 0;
-  }
-  main {
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-  .card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 24px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-    margin-bottom: 20px;
-  }
-  label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 6px;
-    margin-top: 16px;
-    font-size: 0.9rem;
-  }
-  label:first-child { margin-top: 0; }
-  input[type="text"], textarea, select {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd6cc;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-family: inherit;
-  }
-  textarea { resize: vertical; min-height: 80px; }
-  button {
-    width: 100%;
-    margin-top: 20px;
-    padding: 14px;
-    background: #c76b3f;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  button:disabled { opacity: 0.6; cursor: not-allowed; }
-  button:hover:not(:disabled) { background: #b45d33; }
-  .result {
-    background: #fff;
-    border-radius: 12px;
-    padding: 18px;
-    margin-top: 14px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    white-space: pre-wrap;
-    line-height: 1.5;
-  }
-  .result h3 {
-    margin: 0 0 8px;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #c76b3f;
-  }
-  .error {
-    color: #b3261e;
-    margin-top: 12px;
-    font-size: 0.9rem;
-  }
-  .counter {
-    text-align: center;
-    color: #6b6259;
-    font-size: 0.85rem;
-    margin-top: 8px;
-  }
-  footer {
-    text-align: center;
-    padding: 20px;
-    color: #a39b8f;
-    font-size: 0.8rem;
-  }
+
+:root{
+
+--bg:#050816;
+--bg2:#0b1224;
+
+--glass:rgba(255,255,255,.08);
+
+--glassBorder:rgba(255,255,255,.14);
+
+--primary:#8B5CF6;
+
+--secondary:#2563EB;
+
+--cyan:#06B6D4;
+
+--text:#ffffff;
+
+--muted:#A7B6D6;
+
+--shadow:0 25px 60px rgba(0,0,0,.45);
+
+}
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+}
+
+html{
+scroll-behavior:smooth;
+}
+
+body{
+
+font-family:'Inter',sans-serif;
+
+background:var(--bg);
+
+color:var(--text);
+
+min-height:100vh;
+
+overflow-x:hidden;
+
+position:relative;
+
+}
+
+/* Animated Aurora */
+
+body::before{
+
+content:"";
+
+position:fixed;
+
+inset:0;
+
+background:
+
+radial-gradient(circle at 15% 20%,rgba(139,92,246,.30),transparent 35%),
+
+radial-gradient(circle at 80% 15%,rgba(37,99,235,.25),transparent 35%),
+
+radial-gradient(circle at 70% 80%,rgba(6,182,212,.18),transparent 35%),
+
+linear-gradient(135deg,#050816,#0f172a,#111827);
+
+animation:aurora 18s ease-in-out infinite alternate;
+
+z-index:-5;
+
+}
+
+@keyframes aurora{
+
+0%{
+transform:scale(1);
+}
+
+100%{
+transform:scale(1.15);
+}
+
+}
+
+/* Floating Blobs */
+
+.blob{
+
+position:fixed;
+
+border-radius:50%;
+
+filter:blur(110px);
+
+opacity:.35;
+
+pointer-events:none;
+
+animation:float 10s ease-in-out infinite;
+
+z-index:-4;
+
+}
+
+.blob.one{
+
+width:300px;
+
+height:300px;
+
+background:#8B5CF6;
+
+top:-120px;
+
+left:-80px;
+
+}
+
+.blob.two{
+
+width:260px;
+
+height:260px;
+
+background:#2563EB;
+
+right:-70px;
+
+top:160px;
+
+animation-delay:2s;
+
+}
+
+.blob.three{
+
+width:280px;
+
+height:280px;
+
+background:#06B6D4;
+
+bottom:-100px;
+
+left:35%;
+
+animation-delay:4s;
+
+}
+
+@keyframes float{
+
+50%{
+
+transform:translateY(-30px) translateX(20px);
+
+}
+
+}
+
+/* Layout */
+
+.container{
+
+width:min(1180px,92%);
+
+margin:auto;
+
+}
+
+/* Header */
+
+header{
+
+padding:70px 0 40px;
+
+text-align:center;
+
+}
+
+.logo{
+
+font-family:'Space Grotesk',sans-serif;
+
+font-size:64px;
+
+font-weight:700;
+
+background:linear-gradient(90deg,#fff,#A78BFA,#60A5FA);
+
+-webkit-background-clip:text;
+
+-webkit-text-fill-color:transparent;
+
+margin-bottom:18px;
+
+}
+
+.hero-title{
+
+font-size:54px;
+
+font-weight:800;
+
+line-height:1.1;
+
+max-width:850px;
+
+margin:auto;
+
+}
+
+.hero-sub{
+
+margin:22px auto 0;
+
+max-width:720px;
+
+color:var(--muted);
+
+font-size:18px;
+
+line-height:1.8;
+
+}
+
+.badges{
+
+display:flex;
+
+justify-content:center;
+
+gap:14px;
+
+flex-wrap:wrap;
+
+margin-top:35px;
+
+}
+
+.badge{
+
+padding:12px 20px;
+
+border-radius:999px;
+
+background:rgba(255,255,255,.05);
+
+border:1px solid rgba(255,255,255,.10);
+
+backdrop-filter:blur(16px);
+
+font-size:14px;
+
+}
+
+/* Glass Card */
+
+.glass{
+
+background:var(--glass);
+
+backdrop-filter:blur(24px);
+
+border:1px solid var(--glassBorder);
+
+border-radius:30px;
+
+box-shadow:var(--shadow);
+
+}
+
+/* Mobile */
+
+@media(max-width:768px){
+
+.logo{
+
+font-size:44px;
+
+}
+
+.hero-title{
+
+font-size:34px;
+
+}
+
+.hero-sub{
+
+font-size:16px;
+
+}
+
+}
+
 </style>
+
 </head>
 <body>
+
+<div class="blob one"></div>
+<div class="blob two"></div>
+<div class="blob three"></div>
+
 <header>
-  <h1>🖊️ DescGen</h1>
-  <p>Paste product details, get 3 ready-to-use descriptions in seconds.</p>
+
+<div class="container">
+
+<div class="logo">
+DescGen AI
+</div>
+
+<h1 class="hero-title">
+Generate Product Descriptions That Actually Sell
+</h1>
+
+<p class="hero-sub">
+Create beautiful, SEO-friendly product descriptions in seconds using AI.
+Perfect for Shopify, Amazon, Etsy, WooCommerce and your own online store.
+</p>
+
+<div class="badges">
+
+<div class="badge">
+⚡ AI Powered
+</div>
+
+<div class="badge">
+🚀 SEO Optimized
+</div>
+
+<div class="badge">
+🛒 Shopify Ready
+</div>
+
+<div class="badge">
+💎 Premium Quality
+</div>
+
+</div>
+
+</div>
+
 </header>
-<main>
-  <div class="card">
-    <label for="name">Product name</label>
-    <input type="text" id="name" placeholder="e.g. Handmade oak cutting board" />
 
-    <label for="features">Key features / details (one per line)</label>
-    <textarea id="features" placeholder="e.g.&#10;Made from solid oak&#10;18 x 12 inches&#10;Food-safe finish&#10;Handmade in small batches"></textarea>
+<main class="container">
 
-    <label for="tone">Tone</label>
-    <select id="tone">
-      <option value="warm and handmade">Warm & handmade</option>
-      <option value="sleek and modern">Sleek & modern</option>
-      <option value="playful and fun">Playful & fun</option>
-      <option value="luxury and premium">Luxury & premium</option>
-    </select>
+<div class="glass" style="padding:40px;margin-bottom:35px;">
 
-    <button id="generateBtn">Generate descriptions</button>
-    <div class="counter" id="counter"></div>
-    <div class="error" id="error"></div>
-  </div>
+<h2 style="font-size:28px;margin-bottom:10px;">
+Create Description
+</h2>
 
-  <div id="results"></div>
+<p style="color:var(--muted);margin-bottom:30px;">
+Fill in your product details and let AI generate three high-converting descriptions.
+</p>
+
+<label style="display:block;margin-bottom:10px;font-weight:600;">
+Product Name
+</label>
+
+<input
+id="name"
+type="text"
+placeholder="Organic Aloe Vera Face Wash"
+style="
+width:100%;
+padding:18px;
+background:rgba(255,255,255,.05);
+border:1px solid rgba(255,255,255,.12);
+border-radius:16px;
+color:white;
+font-size:16px;
+margin-bottom:22px;
+outline:none;
+"
+/>
+
+<label style="display:block;margin-bottom:10px;font-weight:600;">
+Product Features
+</label>
+
+<textarea
+id="features"
+placeholder="Deep cleans skin&#10;Vitamin E&#10;Paraben Free&#10;Suitable for all skin types"
+style="
+width:100%;
+height:150px;
+padding:18px;
+background:rgba(255,255,255,.05);
+border:1px solid rgba(255,255,255,.12);
+border-radius:16px;
+color:white;
+font-size:16px;
+margin-bottom:22px;
+resize:vertical;
+outline:none;
+"></textarea>
+
+<label style="display:block;margin-bottom:10px;font-weight:600;">
+Writing Tone
+</label>
+
+<select
+id="tone"
+style="
+width:100%;
+padding:18px;
+background:rgba(255,255,255,.05);
+border:1px solid rgba(255,255,255,.12);
+border-radius:16px;
+color:white;
+font-size:16px;
+margin-bottom:30px;
+outline:none;
+">
+
+<option value="warm and handmade">
+Warm & Handmade
+</option>
+
+<option value="sleek and modern">
+Sleek & Modern
+</option>
+
+<option value="playful and fun">
+Playful & Fun
+</option>
+
+<option value="luxury and premium">
+Luxury & Premium
+</option>
+
+</select>
+
+<button
+
+id="generateBtn"
+
+style="
+width:100%;
+padding:20px;
+border:none;
+border-radius:18px;
+background:linear-gradient(135deg,#8B5CF6,#2563EB);
+color:white;
+font-size:18px;
+font-weight:700;
+cursor:pointer;
+transition:.3s;
+box-shadow:0 20px 40px rgba(139,92,246,.35);
+">
+
+✨ Generate AI Description
+
+</button>
+
+<div
+id="counter"
+style="
+margin-top:18px;
+text-align:center;
+color:var(--muted);
+">
+</div>
+
+<div
+id="error"
+style="
+margin-top:10px;
+color:#ff8080;
+text-align:center;
+">
+</div>
+
+</div>
+<div id="results" style="display:grid;gap:24px;">
+
+<div class="glass" id="emptyState" style="padding:40px;text-align:center;">
+
+<div style="font-size:60px;margin-bottom:15px;">
+✨
+</div>
+
+<h2 style="font-size:28px;margin-bottom:12px;">
+Ready to Generate
+</h2>
+
+<p style="color:var(--muted);line-height:1.8;max-width:550px;margin:auto;">
+Your AI-generated descriptions will appear here.
+Generate professional product descriptions that increase conversions and save hours of writing.
+</p>
+
+</div>
+
+</div>
+
 </main>
-<footer>DescGen — free tier: 5 generations/day per device</footer>
 
-<script>
-const DAILY_LIMIT = 5;
+<footer style="margin-top:80px;padding:50px 20px;">
+
+<div class="container">
+
+<div class="glass" style="padding:30px;text-align:center;">
+
+<h2 style="font-size:24px;margin-bottom:10px;">
+DescGen AI
+</h2>
+
+<p style="color:var(--muted);margin-bottom:25px;line-height:1.8;">
+
+Built for modern ecommerce businesses.
+
+Generate descriptions for
+
+Shopify • Amazon • Etsy • WooCommerce
+
+</p>
+
+<div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
+
+<div class="badge">
+⚡ AI Powered
+</div>
+
+<div class="badge">
+🚀 Fast
+</div>
+
+<div class="badge">
+🔒 Secure
+</div>
+
+<div class="badge">
+💜 Made with AI
+</div>
+
+</div>
+
+<p style="margin-top:30px;color:#7f8fb3;font-size:14px;">
+© 2026 DescGen AI • All Rights Reserved
+</p>
+
+</div>
+
+</div>
+
+</footer>
+ <script>
+ const DAILY_LIMIT = 5;
+
+const btn = document.getElementById("generateBtn");
+const counter = document.getElementById("counter");
+const errorEl = document.getElementById("error");
+const results = document.getElementById("results");
 
 function getUsage() {
-  const today = new Date().toISOString().slice(0, 10);
-  const raw = document.cookie.split('; ').find(r => r.startsWith('descgen_usage='));
-  if (!raw) return { date: today, count: 0 };
-  try {
-    const data = JSON.parse(decodeURIComponent(raw.split('=')[1]));
-    if (data.date !== today) return { date: today, count: 0 };
-    return data;
-  } catch (e) {
-    return { date: today, count: 0 };
-  }
-}
 
-function setUsage(usage) {
-  document.cookie = `descgen_usage=${encodeURIComponent(JSON.stringify(usage))}; max-age=86400; path=/`;
-}
+    const today = new Date().toISOString().slice(0,10);
 
-function refreshCounter() {
-  const usage = getUsage();
-  const left = Math.max(0, DAILY_LIMIT - usage.count);
-  document.getElementById('counter').textContent = `${left} free generation${left === 1 ? '' : 's'} left today`;
-}
+    const cookie = document.cookie
+        .split("; ")
+        .find(c => c.startsWith("descgen_usage="));
 
-refreshCounter();
+    if(!cookie){
 
-document.getElementById('generateBtn').addEventListener('click', async () => {
-  const errorEl = document.getElementById('error');
-  const resultsEl = document.getElementById('results');
-  const btn = document.getElementById('generateBtn');
-  errorEl.textContent = '';
+        return {
 
-  const usage = getUsage();
-  if (usage.count >= DAILY_LIMIT) {
-    errorEl.textContent = "You've hit today's free limit. Come back tomorrow, or upgrade for unlimited use.";
-    return;
-  }
+            date:today,
 
-  const name = document.getElementById('name').value.trim();
-  const features = document.getElementById('features').value.trim();
-  const tone = document.getElementById('tone').value;
+            count:0
 
-  if (!name || !features) {
-    errorEl.textContent = 'Please fill in the product name and at least one feature.';
-    return;
-  }
+        };
 
-  btn.disabled = true;
-  btn.textContent = 'Generating...';
-  resultsEl.innerHTML = '';
-
-  try {
-    const res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, features, tone })
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || 'Something went wrong. Please try again.');
     }
 
-    const data = await res.json();
-    const variants = data.variants || [];
+    try{
 
-    resultsEl.innerHTML = variants.map((v, i) => `
-      <div class="result">
-        <h3>Variant ${i + 1}</h3>
-        ${v.replace(/</g, '&lt;')}
-      </div>
-    `).join('');
+        const data = JSON.parse(
 
-    usage.count += 1;
-    setUsage(usage);
-    refreshCounter();
-  } catch (err) {
-    errorEl.textContent = err.message;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Generate descriptions';
-  }
+            decodeURIComponent(cookie.split("=")[1])
+
+        );
+
+        if(data.date !== today){
+
+            return {
+
+                date:today,
+
+                count:0
+
+            };
+
+        }
+
+        return data;
+
+    }
+
+    catch{
+
+        return {
+
+            date:today,
+
+            count:0
+
+        };
+
+    }
+
+}
+
+function setUsage(data){
+
+    document.cookie =
+`descgen_usage=${encodeURIComponent(JSON.stringify(data))}; max-age=86400; path=/`;
+
+}
+
+function updateCounter(){
+
+    const usage = getUsage();
+
+    const left = DAILY_LIMIT - usage.count;
+
+    counter.innerHTML =
+`✨ <strong>${left}</strong> free generation${left==1?"":"s"} remaining today`;
+
+}
+
+updateCounter();
+ function loadingState(){
+
+results.innerHTML=`
+
+<div class="glass"
+
+style="padding:35px;text-align:center;">
+
+<div style="font-size:42px;margin-bottom:20px;">
+
+✨
+
+</div>
+
+<h2>
+
+Generating Description...
+
+</h2>
+
+<p style="color:var(--muted);margin-top:12px;">
+
+Our AI is writing three premium descriptions.
+
+</p>
+
+</div>
+
+`;
+
+}
+  btn.addEventListener("click", async () => {
+
+    errorEl.textContent = "";
+
+    const usage = getUsage();
+
+    if (usage.count >= DAILY_LIMIT) {
+
+        errorEl.textContent =
+            "You've reached today's free limit. Upgrade for unlimited generations.";
+
+        return;
+
+    }
+
+    const name = document.getElementById("name").value.trim();
+    const features = document.getElementById("features").value.trim();
+    const tone = document.getElementById("tone").value;
+
+    if (!name || !features) {
+
+        errorEl.textContent =
+            "Please enter the product name and features.";
+
+        return;
+
+    }
+
+    btn.disabled = true;
+
+    btn.innerHTML = "✨ Generating...";
+
+    loadingState();
+
+    try {
+
+        const res = await fetch("/api/generate", {
+
+            method: "POST",
+
+            headers: {
+
+                "Content-Type": "application/json"
+
+            },
+
+            body: JSON.stringify({
+
+                name,
+
+                features,
+
+                tone
+
+            })
+
+        });
+
+        if (!res.ok) {
+
+            throw new Error("Failed to generate descriptions.");
+
+        }
+
+        const data = await res.json();
+
+        const variants = data.variants || [];
+
+        results.innerHTML = "";
+
+        variants.forEach((text, index) => {
+
+            const card = document.createElement("div");
+
+            card.className = "glass";
+
+            card.style.padding = "30px";
+            card.style.marginBottom = "20px";
+
+            card.innerHTML = `
+                <h3 style="margin-bottom:15px;">
+                    ✨ Variant ${index + 1}
+                </h3>
+
+                <div class="generatedText"
+                     style="white-space:pre-wrap;line-height:1.8;color:#d9e2ff;">
+                    ${text.replace(/</g,"&lt;")}
+                </div>
+
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    margin-top:25px;
+                    flex-wrap:wrap;
+                    gap:15px;
+                ">
+
+                    <span style="color:#9FB3D8;font-size:14px;">
+                        ${text.split(" ").length} words
+                    </span>
+
+                    <button class="copyBtn"
+                    style="
+                    width:auto;
+                    padding:10px 20px;
+                    border:none;
+                    border-radius:12px;
+                    background:#8B5CF6;
+                    color:white;
+                    cursor:pointer;
+                    ">
+                        📋 Copy
+                    </button>
+
+                </div>
+            `;
+
+            results.appendChild(card);
+
+        });
+
+        usage.count++;
+
+        setUsage(usage);
+
+        updateCounter();
+             document.querySelectorAll(".copyBtn").forEach((button) => {
+
+            button.addEventListener("click", () => {
+
+                const text = button
+                    .closest(".glass")
+                    .querySelector(".generatedText")
+                    .innerText;
+
+                navigator.clipboard.writeText(text);
+
+                const oldText = button.innerHTML;
+
+                button.innerHTML = "✅ Copied";
+
+                setTimeout(() => {
+                    button.innerHTML = oldText;
+                }, 1500);
+
+            });
+
+        });
+
+    } catch (err) {
+
+        errorEl.textContent =
+            err.message || "Something went wrong.";
+
+    } finally {
+
+        btn.disabled = false;
+
+        btn.innerHTML = "✨ Generate AI Description";
+
+    }
+
 });
-</script>
+  </script>
+
 <script defer src="/_vercel/insights/script.js"></script>
+
 </body>
 </html>
