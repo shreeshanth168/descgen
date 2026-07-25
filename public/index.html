@@ -753,11 +753,23 @@ Our AI is writing three premium descriptions.
 
         const data = await res.json();
 
-        const variants = data.variants || [];
+const generated = data.data || {};
 
-        results.innerHTML = "";
+const variants = [
+    generated.marketplace,
+    generated.seoTitle,
+    generated.seoMeta,
+    generated.keywords,
+    generated.instagram,
+    generated.facebook,
+    generated.whatsapp,
+    generated.faq,
+    generated.specifications
+].filter(Boolean);
 
-        variants.forEach((text, index) => {
+results.innerHTML = "";
+
+variants.forEach((text, index) => {
 
             const card = document.createElement("div");
 
