@@ -780,8 +780,20 @@ variants.forEach((text, index) => {
 
             card.innerHTML = `
                 <h3 style="margin-bottom:15px;">
-                    ✨ Variant ${index + 1}
-                </h3>
+    ✨ ${
+        [
+            "Marketplace Listing",
+            "SEO Title",
+            "SEO Meta Description",
+            "SEO Keywords",
+            "Instagram Caption",
+            "Facebook Advertisement",
+            "WhatsApp Promotion",
+            "FAQ",
+            "Product Specifications"
+        ][index] || `Section ${index + 1}`
+    }
+</h3>
 
                 <div class="generatedText"
                      style="white-space:pre-wrap;line-height:1.8;color:#d9e2ff;">
