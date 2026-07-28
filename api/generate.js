@@ -1,6 +1,5 @@
 // ======================================================
-// DescGen AI - Complete Production API
-// Part 1/5
+// DescGen AI - Production API
 // ======================================================
 
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
@@ -33,6 +32,7 @@ Rules:
 - Never explain your process.
 - Never add unnecessary notes.
 - Return only the requested content.
+- Strictly follow any character limits given for a section.
 
 `;
 
@@ -106,25 +106,14 @@ Include:
 `
 
 };
-// ======================================================
-// Part 2/5
-// Prompt Builder + Input Cleaning
-// ======================================================
-
 
 // ======================================================
 // Clean User Input
 // ======================================================
 
 function cleanInput(value = "") {
-
-  return String(value)
-    .trim()
-    .replace(/[<>]/g, "")
-    .substring(0, 5000);
-
+  return String(value).trim().replace(/[<>]/g, "").substring(0, 5000);
 }
-
 
 
 // ======================================================
@@ -133,67 +122,56 @@ function cleanInput(value = "") {
 
 function buildPrompt(product) {
 
-
   const platform =
-    product.platform &&
-    TEMPLATES[product.platform]
+    product.platform && TEMPLATES[product.platform]
       ? TEMPLATES[product.platform]
-      : `
-Create premium product descriptions.
-`;
-
-
+      : `Create premium product descriptions.`;
 
   return `
-
 ${SYSTEM_PROMPT}
-
 
 PRODUCT DETAILS
 
 Product Name:
-
 ${product.name}
 
-
 Features:
-
 ${product.features}
 
-
 Tone:
-
 ${product.tone}
 
-
 Platform:
-
 ${product.platform || "General"}
 
-
-
 TASK:
-
 ${platform}
-
-
 
 Also generate:
 
 SEO Title:
-Maximum 60 characters.
+Between 50 and 60 characters. Do not exceed 60 characters.
 
 SEO Meta Description:
-Maximum 155 characters.
+Between 140 and 160 characters. Do not exceed 160 characters.
 
 Keywords:
 Generate 20 relevant SEO keywords separated by commas.
 
-Instagram Caption:
-Include hook, benefits, CTA and hashtags.
+Instagram Caption (Short):
+A punchy 1-2 sentence caption with 3-5 relevant hashtags. Under 150 characters.
 
-Facebook Advertisement:
-Create conversion focused ad copy.
+Instagram Caption (Long):
+A fuller caption with hook, benefits, a call to action, and 8-10 relevant hashtags.
+
+Facebook Ad Headline:
+Under 40 characters. Attention-grabbing, benefit-led.
+
+Facebook Ad Primary Text:
+2-3 sentences of conversion-focused ad copy.
+
+Facebook Ad CTA:
+A single short call-to-action phrase (e.g. "Shop Now", "Get Yours Today").
 
 WhatsApp Promotion:
 Create short promotional message.
@@ -204,20 +182,13 @@ Create 5 common customer questions with answers.
 Specifications:
 Create professional product specifications.
 
-
-
 IMPORTANT:
-
 Separate every section using exactly:
-
 ${SPLIT_TOKEN}
 
-
 Return only the generated content.
-
 `;
 }
-
 
 
 // ======================================================
@@ -225,321 +196,89 @@ Return only the generated content.
 // ======================================================
 
 function parseSections(text = "") {
-
-
-  const sections =
-    text
-      .split(SPLIT_TOKEN)
-      .map(section => section.trim())
-      .filter(Boolean);
-
-
+  const sections = text.split(SPLIT_TOKEN).map(s => s.trim()).filter(Boolean);
 
   return {
-
-    marketplace:
-      sections[0] || "",
-
-
-    seoTitle:
-      sections[1] || "",
-
-
-    seoMeta:
-      sections[2] || "",
-
-
-    keywords:
-      sections[3] || "",
-
-
-    instagram:
-      sections[4] || "",
-
-
-    facebook:
-      sections[5] || "",
-
-
-    whatsapp:
-      sections[6] || "",
-
-
-    faq:
-      sections[7] || "",
-
-
-    specifications:
-      sections[8] || ""
-
+    marketplace: sections[0] || "",
+    seoTitle: sections[1] || "",
+    seoMeta: sections[2] || "",
+    keywords: sections[3] || "",
+    instagramShort: sections[4] || "",
+    instagramLong: sections[5] || "",
+    facebookHeadline: sections[6] || "",
+    facebookPrimaryText: sections[7] || "",
+    facebookCTA: sections[8] || "",
+    whatsapp: sections[9] || "",
+    faq: sections[10] || "",
+    specifications: sections[11] || ""
   };
-
 }
-// ======================================================
-// Part 3/5
-// Gemini API Connection
-// ======================================================
 
 
 // ======================================================
-// Create Gemini Request Body
+// Gemini API Call
 // ======================================================
 
 function createGeminiBody(prompt) {
-
   return {
-
-    contents: [
-      {
-        parts: [
-          {
-            text: prompt
-          }
-        ]
-      }
-    ],
-
-
+    contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
-
       temperature: 0.85,
-
       topP: 0.95,
-
       maxOutputTokens: 8192
-
     }
-
   };
-
 }
-
-
-
-// ======================================================
-// Call Gemini API
-// ======================================================
 
 async function callGemini(apiKey, prompt) {
-
-
   const response = await fetch(
-
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-
     {
-
       method: "POST",
-
-
-      headers: {
-
-        "Content-Type": "application/json"
-
-      },
-
-
-      body: JSON.stringify(
-
-        createGeminiBody(prompt)
-
-      )
-
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(createGeminiBody(prompt))
     }
-
   );
-
-
 
   if (!response.ok) {
-
-
-    const errorText =
-      await response.text();
-
-
-    console.error(
-      "Gemini API Error:",
-      errorText
-    );
-
-
-    throw new Error(
-      "Gemini API failed"
-    );
-
+    const errorText = await response.text();
+    console.error("Gemini API Error:", errorText);
+    throw new Error("Gemini API failed");
   }
 
-
-
-  const data =
-    await response.json();
-
-
-
-  return (
-
-    data
-      ?.candidates?.[0]
-      ?.content?.parts?.[0]
-      ?.text
-
-      || ""
-
-  );
-
+  const data = await response.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }
 
-
-
-// ======================================================
-// Retry System
-// ======================================================
-
-async function callGeminiWithRetry(
-
-  apiKey,
-
-  prompt
-
-) {
-
-
+async function callGeminiWithRetry(apiKey, prompt) {
   const maxAttempts = 3;
-
-
-
-  for (
-
-    let attempt = 1;
-
-    attempt <= maxAttempts;
-
-    attempt++
-
-  ) {
-
-
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-
-
-      return await callGemini(
-
-        apiKey,
-
-        prompt
-
-      );
-
-
-    } catch(error) {
-
-
-      console.error(
-
-        `Gemini attempt ${attempt} failed:`,
-
-        error.message
-
-      );
-
-
-
-      if (
-
-        attempt === maxAttempts
-
-      ) {
-
-        throw error;
-
-      }
-
-
-
-      await new Promise(
-
-        resolve =>
-
-          setTimeout(
-
-            resolve,
-
-            attempt * 1500
-
-          )
-
-      );
-
+      return await callGemini(apiKey, prompt);
+    } catch (error) {
+      console.error(`Gemini attempt ${attempt} failed:`, error.message);
+      if (attempt === maxAttempts) throw error;
+      await new Promise(resolve => setTimeout(resolve, attempt * 1500));
     }
-
   }
-
 }
-// ======================================================
-// Part 4/5
-// Request Validation + API Handler
-// ======================================================
 
 
 // ======================================================
-// Validate Request
+// Request Validation
 // ======================================================
 
 function validateRequest(body = {}) {
-
   const errors = [];
-
-
-  if (!body.name || !body.name.trim()) {
-
-    errors.push(
-      "Product name is required"
-    );
-
-  }
-
-
-  if (!body.features || !body.features.trim()) {
-
-    errors.push(
-      "Product features are required"
-    );
-
-  }
-
-
-  if (!body.tone || !body.tone.trim()) {
-
-    errors.push(
-      "Tone is required"
-    );
-
-  }
-
-
+  if (!body.name || !body.name.trim()) errors.push("Product name is required");
+  if (!body.features || !body.features.trim()) errors.push("Product features are required");
+  if (!body.tone || !body.tone.trim()) errors.push("Tone is required");
   return errors;
-
 }
-
-
-
-// ======================================================
-// Create Error Response
-// ======================================================
 
 function errorResponse(message) {
-
-  return {
-
-    success: false,
-
-    error: message
-
-  };
-
+  return { success: false, error: message };
 }
-
 
 
 // ======================================================
@@ -547,274 +286,43 @@ function errorResponse(message) {
 // ======================================================
 
 export default async function handler(req, res) {
-
-
   if (req.method !== "POST") {
-
-    return res.status(405).json(
-
-      errorResponse(
-        "Method not allowed"
-      )
-
-    );
-
+    return res.status(405).json(errorResponse("Method not allowed"));
   }
 
-
-
-  const apiKey =
-    process.env.GEMINI_API_KEY;
-
-
-
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-
-
-    return res.status(500).json(
-
-      errorResponse(
-        "GEMINI_API_KEY is missing"
-      )
-
-    );
-
-
+    return res.status(500).json(errorResponse("GEMINI_API_KEY is missing"));
   }
-
-
 
   try {
-
-
-    const body =
-      req.body || {};
-
-
-
-    const errors =
-      validateRequest(body);
-
-
+    const body = req.body || {};
+    const errors = validateRequest(body);
 
     if (errors.length > 0) {
-
-
-      return res.status(400).json({
-
-        success: false,
-
-        errors
-
-      });
-
-
+      return res.status(400).json({ success: false, errors });
     }
-
-
 
     const product = {
-
-
-      name:
-
-        cleanInput(body.name),
-
-
-
-      features:
-
-        cleanInput(body.features),
-
-
-
-      tone:
-
-        cleanInput(body.tone),
-
-
-
-      platform:
-
-        cleanInput(
-          body.platform || ""
-        )
-
-
+      name: cleanInput(body.name),
+      features: cleanInput(body.features),
+      tone: cleanInput(body.tone),
+      platform: cleanInput(body.platform || "")
     };
 
-
-
-    const prompt =
-      buildPrompt(product);
-
-
-
-    const aiText =
-      await callGeminiWithRetry(
-
-        apiKey,
-
-        prompt
-
-      );
-
-
+    const prompt = buildPrompt(product);
+    const aiText = await callGeminiWithRetry(apiKey, prompt);
 
     if (!aiText) {
-
-
-      return res.status(502).json(
-
-        errorResponse(
-
-          "AI returned empty response"
-
-        )
-
-      );
-
-
+      return res.status(502).json(errorResponse("AI returned empty response"));
     }
 
+    const result = parseSections(aiText);
 
+    return res.status(200).json({ success: true, data: result });
 
-    const result =
-      parseSections(aiText);
-
-
-
-    return res.status(200).json({
-
-      success: true,
-
-      data: result
-
-    });
-
-
-
-  } catch(error) {
-
-
-    console.error(
-
-      "Server Error:",
-
-      error
-
-    );
-
-
-
-    return res.status(500).json(
-
-      errorResponse(
-
-        "Something went wrong. Please try again."
-
-      )
-
-    );
-
-
+  } catch (error) {
+    console.error("Server Error:", error);
+    return res.status(500).json(errorResponse("Something went wrong. Please try again."));
   }
-
-}
-// ======================================================
-// Part 5/5
-// Final Cleanup + Production Helpers
-// ======================================================
-
-
-// ======================================================
-// Response Cleaner
-// ======================================================
-
-function cleanAIResponse(text = "") {
-
-  return text
-
-    .replace(/\r/g, "")
-
-    .replace(/\n{3,}/g, "\n\n")
-
-    .trim();
-
-}
-
-
-
-// ======================================================
-// Supported Platforms
-// ======================================================
-
-const SUPPORTED_PLATFORMS = [
-
-  "amazon",
-
-  "shopify",
-
-  "etsy",
-
-  "flipkart",
-
-  "meesho"
-
-];
-
-
-
-// ======================================================
-// Platform Validator
-// ======================================================
-
-function validatePlatform(platform = "") {
-
-
-  if (!platform) {
-
-    return "";
-
-  }
-
-
-  const value =
-    platform.toLowerCase();
-
-
-
-  if (
-
-    SUPPORTED_PLATFORMS.includes(value)
-
-  ) {
-
-    return value;
-
-  }
-
-
-  return "";
-
-}
-
-
-
-// ======================================================
-// Production Health Check
-// ======================================================
-
-function apiStatus() {
-
-  return {
-
-    service: "DescGen AI",
-
-    status: "running",
-
-    version: "1.0.0"
-
-  };
-
 }
