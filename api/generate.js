@@ -183,6 +183,7 @@ Specifications:
 Create professional product specifications.
 
 IMPORTANT:
+You must generate all 12 sections listed above, in this exact order, with no section left blank. Even if a section feels repetitive, write real content for it anyway.
 Separate every section using exactly:
 ${SPLIT_TOKEN}
 
@@ -196,7 +197,7 @@ Return only the generated content.
 // ======================================================
 
 function parseSections(text = "") {
-  const sections = text.split(SPLIT_TOKEN).map(s => s.trim()).filter(Boolean);
+  const sections = text.split(SPLIT_TOKEN).map(s => s.trim());
 
   return {
     marketplace: sections[0] || "",
