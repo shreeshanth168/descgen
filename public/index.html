@@ -111,6 +111,28 @@ select.field-input{cursor:pointer;}
     <div id="error" style="margin-top:10px;color:#ff8080;text-align:center;"></div>
   </div>
 
+  <div class="glass" id="pricingSection" style="padding:40px;margin-bottom:35px;text-align:center;">
+    <div class="badge" style="background:rgba(139,92,246,.18);border-color:rgba(139,92,246,.4);margin-bottom:16px;display:inline-block;">🎉 Early Adopter Pricing — Locked In For Life</div>
+    <h2 style="font-size:28px;margin-bottom:10px;">Go Unlimited</h2>
+    <p style="color:var(--muted);margin-bottom:30px;">Free plan includes 3 generations/day. Upgrade for unlimited, forever at this price.</p>
+
+    <div style="display:flex;justify-content:center;gap:20px;flex-wrap:wrap;">
+      <div class="glass" style="padding:30px;width:240px;">
+        <div style="color:var(--muted);font-size:14px;margin-bottom:6px;">Monthly</div>
+        <div id="priceMonthly" style="font-size:36px;font-weight:800;margin-bottom:4px;">—</div>
+        <div style="color:var(--muted);font-size:13px;margin-bottom:20px;">per month</div>
+        <button class="gen-btn subscribeBtn" data-plan="monthly" style="padding:14px;font-size:15px;">Subscribe Monthly</button>
+      </div>
+      <div class="glass" style="padding:30px;width:240px;border:1px solid rgba(139,92,246,.5);">
+        <div style="color:#A78BFA;font-size:14px;margin-bottom:6px;font-weight:700;">Annual · Best Value</div>
+        <div id="priceAnnual" style="font-size:36px;font-weight:800;margin-bottom:4px;">—</div>
+        <div style="color:var(--muted);font-size:13px;margin-bottom:20px;">per year</div>
+        <button class="gen-btn subscribeBtn" data-plan="annual" style="padding:14px;font-size:15px;">Subscribe Annually</button>
+      </div>
+    </div>
+    <p id="regionNote" style="color:#8892b0;font-size:13px;margin-top:20px;"></p>
+  </div>
+
   <div id="resultsWrap"></div>
 
   <div class="glass" style="padding:40px;margin-top:35px;">
@@ -159,7 +181,7 @@ select.field-input{cursor:pointer;}
 </footer>
 
 <script>
-const DAILY_LIMIT = 5;
+const DAILY_LIMIT = 3;
 const btn = document.getElementById("generateBtn");
 const counter = document.getElementById("counter");
 const errorEl = document.getElementById("error");
@@ -186,12 +208,81 @@ function getUsage() {
 function setUsage(data) {
   document.cookie = `descgen_usage=${encodeURIComponent(JSON.stringify(data))}; max-age=86400; path=/`;
 }
+function isSubscribed() {
+  return localStorage.getItem("descgen_subscribed") === "true";
+}
+
 function updateCounter() {
+  if (isSubscribed()) {
+    counter.innerHTML = `✨ <strong>Unlimited</strong> generations — thanks for subscribing!`;
+    return;
+  }
   const usage = getUsage();
   const left = DAILY_LIMIT - usage.count;
   counter.innerHTML = `✨ <strong>${left}</strong> free generation${left===1?"":"s"} remaining today`;
 }
 updateCounter();
+
+// Region-based pricing
+const PRICING = {
+  IN: { symbol: "₹", monthly: 199, annual: 1999, region: "India" },
+  INTL: { symbol: "$", monthly: 9, annual: 99, region: "International" }
+};
+
+function detectRegion() {
+  const saved = localStorage.getItem("descgen_region");
+  if (saved === "IN" || saved === "INTL") return saved;
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    const lang = navigator.language || "";
+    if (tz === "Asia/Kolkata" || tz === "Asia/Calcutta" || lang.toLowerCase().includes("in")) return "IN";
+  } catch {}
+  return "INTL";
+}
+
+function renderPricing() {
+  const region = detectRegion();
+  const plan = PRICING[region];
+  document.getElementById("priceMonthly").textContent = `${plan.symbol}${plan.monthly}`;
+  document.getElementById("priceAnnual").textContent = `${plan.symbol}${plan.annual}`;
+  document.getElementById("regionNote").innerHTML =
+    `Pricing shown for ${plan.region}. Not your region? <a href="#" id="switchRegion" style="color:#A78BFA;">Switch to ${region === "IN" ? "International" : "India"} pricing</a>`;
+
+  document.getElementById("switchRegion").onclick = (e) => {
+    e.preventDefault();
+    const next = region === "IN" ? "INTL" : "IN";
+    localStorage.setItem("descgen_region", next);
+    renderPricing();
+  };
+}
+renderPricing();
+if (isSubscribed()) {
+  document.getElementById("pricingSection").style.display = "none";
+}
+
+const PAYMENT_LINKS = {
+  IN: {
+    monthly: "https://rzp.io/rzp/dMUlwhP",
+    annual: "" // will add once created
+  },
+  INTL: {
+    monthly: "", // needs a separate international payment link (see note below)
+    annual: ""
+  }
+};
+
+document.querySelectorAll(".subscribeBtn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const plan = btn.dataset.plan;
+    const region = detectRegion();
+    const link = PAYMENT_LINKS[region][plan];
+    if (!link) {
+      alert("This plan isn't ready yet — check back soon!");
+      return;
+    }
+    window.location.href = link;
+  });
+});
 
 function loadingState() {
   resultsWrap.innerHTML = `
@@ -267,8 +358,9 @@ function renderResults(data) {
 
 btn.addEventListener("click", async () => {
   errorEl.textContent = "";
+  const subscribed = isSubscribed();
   const usage = getUsage();
-  if (usage.count >= DAILY_LIMIT) {
+  if (!subscribed && usage.count >= DAILY_LIMIT) {
     errorEl.textContent = "You've reached today's free limit. Upgrade for unlimited generations.";
     return;
   }
@@ -300,8 +392,10 @@ btn.addEventListener("click", async () => {
     if (!json.success) throw new Error((json.errors && json.errors[0]) || json.error || "Something went wrong.");
 
     renderResults(json.data || {});
-    usage.count++;
-    setUsage(usage);
+    if (!subscribed) {
+      usage.count++;
+      setUsage(usage);
+    }
     updateCounter();
   } catch (err) {
     errorEl.textContent = err.message || "Something went wrong.";
