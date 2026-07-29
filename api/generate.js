@@ -56,7 +56,7 @@ Fill in real content for every key based on the product details above — the te
 // ======================================================
 
 function cleanInput(value = "") {
-  return String(value).trim().replace(/[<>]/g, "").substring(0, 5000);
+  return String(value).trim().replace(/[<>]/g, "").substring(0, 2000);
 }
 
 
@@ -159,12 +159,33 @@ function errorResponse(message) {
 
 
 // ======================================================
+// Allowed origins (basic anti-abuse — blocks direct script/bot calls)
+// ======================================================
+
+const ALLOWED_ORIGINS = [
+  "https://www.descgenai.online",
+  "https://descgenai.online",
+  "https://descgen-delta.vercel.app"
+];
+
+function isAllowedOrigin(req) {
+  const origin = req.headers.origin || "";
+  const referer = req.headers.referer || "";
+  return ALLOWED_ORIGINS.some(o => origin.startsWith(o) || referer.startsWith(o));
+}
+
+
+// ======================================================
 // Vercel Serverless Function
 // ======================================================
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json(errorResponse("Method not allowed"));
+  }
+
+  if (!isAllowedOrigin(req)) {
+    return res.status(403).json(errorResponse("Forbidden"));
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
