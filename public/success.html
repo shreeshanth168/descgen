@@ -28,9 +28,23 @@ a.btn{display:inline-block;padding:16px 30px;border-radius:14px;background:linea
 </div>
 
 <script>
-// Unlock unlimited generations on this device
-localStorage.setItem("descgen_subscribed", "true");
-localStorage.setItem("descgen_subscribed_date", new Date().toISOString());
+// Basic mitigation: only unlock if the visitor actually arrived from Razorpay.
+// This is NOT a full fix — a determined person can still spoof a referrer —
+// but it blocks the casual "just type the URL" exploit.
+const cameFromRazorpay = document.referrer.includes("razorpay.com") || document.referrer.includes("rzp.io");
+
+if (cameFromRazorpay) {
+  localStorage.setItem("descgen_subscribed", "true");
+  localStorage.setItem("descgen_subscribed_date", new Date().toISOString());
+} else {
+  document.querySelector(".wrap").innerHTML = `
+    <div class="glass">
+      <div class="emoji">⚠️</div>
+      <h1>Hmm, That's Not Right</h1>
+      <p>This page is only reachable after completing a payment. If you believe this is an error, please contact support.</p>
+      <a class="btn" href="/index.html">Back to DescGen AI</a>
+    </div>`;
+}
 </script>
 </body>
 </html>
