@@ -1,111 +1,55 @@
 // ======================================================
-// DescGen AI - Production API
+// DescGen AI - Production API (JSON-structured output)
 // ======================================================
 
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
-const SPLIT_TOKEN = "---SECTION---";
-
-
 // ======================================================
-// AI System Instructions
+// Platform-specific guidance for the "marketplace" field
 // ======================================================
 
-const SYSTEM_PROMPT = `
-You are DescGen AI.
-
-You are a professional e-commerce copywriting AI.
-
-Your job is to create:
-- Marketplace listings
-- SEO content
-- Marketing copy
-- FAQs
-- Product specifications
-
-Rules:
-
-- Write human sounding content.
-- Focus on conversions.
-- Focus on customer benefits.
-- Use clear professional language.
-- Never explain your process.
-- Never add unnecessary notes.
-- Return only the requested content.
-- Strictly follow any character limits given for a section.
-
-`;
-
-
-// ======================================================
-// Platform Templates
-// ======================================================
-
-const TEMPLATES = {
-
-amazon: `
-Create Amazon listing content.
-
-Include:
-
-1. SEO optimized title
-2. Five bullet points
-3. Product description
-
-Rules:
-- Highlight benefits
-- Include important keywords
-- Make it conversion focused
-`,
-
-shopify: `
-Create Shopify product page copy.
-
-Include:
-
-- Product headline
-- Storytelling description
-- Benefits
-- Features
-- Call to action
-
-Make it premium brand style.
-`,
-
-etsy: `
-Create Etsy listing copy.
-
-Include:
-
-- Emotional storytelling
-- Handmade/personal feeling
-- SEO friendly wording
-- Customer connection
-`,
-
-flipkart: `
-Create Flipkart product listing.
-
-Include:
-
-- Simple Indian customer language
-- Benefits
-- Features
-- Buying motivation
-`,
-
-meesho: `
-Create Meesho product listing.
-
-Include:
-
-- Short catchy description
-- Affordable appeal
-- Indian audience focused
-- Conversion focused
-`
-
+const PLATFORM_GUIDANCE = {
+  amazon: "Write this as Amazon-style listing copy: a benefit-led opening line, followed by five short benefit-focused bullet points (use line breaks between bullets), then a brief closing product description. Highlight keywords naturally.",
+  shopify: "Write this as a Shopify product page: a short headline, a 2-3 sentence brand story, a highlights section (3-4 bullet points), and end with a call to action. Premium, brand-forward tone.",
+  etsy: "Write this as an Etsy listing: warm, personal, story-driven, emphasizing handmade or small-batch quality and an emotional connection with the buyer.",
+  flipkart: "Write this as a Flipkart listing: simple, direct Indian-audience language, clear benefits and features, and a buying motivation line. Keep sentences short.",
+  meesho: "Write this as a Meesho listing: short, catchy, price-and-value focused, simple language for a broad Indian audience, conversion-focused.",
+  "": "Write this as a general, premium product description suitable for any online store."
 };
+
+function buildPrompt(product) {
+  const guidance = PLATFORM_GUIDANCE[product.platform] || PLATFORM_GUIDANCE[""];
+
+  return `
+You are DescGen AI, a professional e-commerce copywriter. Write human-sounding, conversion-focused, benefit-led copy. Never explain your process. Return only what is requested.
+
+PRODUCT DETAILS
+Product Name: ${product.name}
+Features: ${product.features}
+Tone: ${product.tone}
+Platform: ${product.platform || "General"}
+
+Respond with ONLY a valid JSON object (no markdown fences, no extra text) with exactly these keys, each a string:
+
+{
+  "marketplace": "${guidance}",
+  "seoTitle": "An SEO title between 50 and 60 characters, not exceeding 60.",
+  "seoMeta": "An SEO meta description between 140 and 160 characters, not exceeding 160.",
+  "keywords": "20 relevant SEO keywords separated by commas.",
+  "instagramShort": "A punchy 1-2 sentence Instagram caption with 3-5 hashtags, under 150 characters.",
+  "instagramLong": "A fuller Instagram caption with a hook, benefits, a call to action, and 8-10 hashtags.",
+  "facebookHeadline": "A Facebook ad headline under 40 characters, attention-grabbing and benefit-led.",
+  "facebookPrimaryText": "2-3 sentences of conversion-focused Facebook ad copy.",
+  "facebookCTA": "A short call-to-action phrase, e.g. Shop Now or Get Yours Today.",
+  "whatsapp": "A short WhatsApp promotional message.",
+  "faq": "5 common customer questions with answers, formatted as Q: ... A: ... pairs separated by line breaks.",
+  "specifications": "A clean list of product specifications based on the given features, one per line."
+}
+
+Fill in real content for every key based on the product details above — the text in the JSON template shown is instruction, not literal output. Every key must have real, non-empty content. Return ONLY the JSON object, nothing else.
+`;
+}
+
 
 // ======================================================
 // Clean User Input
@@ -117,116 +61,17 @@ function cleanInput(value = "") {
 
 
 // ======================================================
-// Build AI Prompt
-// ======================================================
-
-function buildPrompt(product) {
-
-  const platform =
-    product.platform && TEMPLATES[product.platform]
-      ? TEMPLATES[product.platform]
-      : `Create premium product descriptions.`;
-
-  return `
-${SYSTEM_PROMPT}
-
-PRODUCT DETAILS
-
-Product Name:
-${product.name}
-
-Features:
-${product.features}
-
-Tone:
-${product.tone}
-
-Platform:
-${product.platform || "General"}
-
-TASK:
-${platform}
-
-Also generate:
-
-SEO Title:
-Between 50 and 60 characters. Do not exceed 60 characters.
-
-SEO Meta Description:
-Between 140 and 160 characters. Do not exceed 160 characters.
-
-Keywords:
-Generate 20 relevant SEO keywords separated by commas.
-
-Instagram Caption (Short):
-A punchy 1-2 sentence caption with 3-5 relevant hashtags. Under 150 characters.
-
-Instagram Caption (Long):
-A fuller caption with hook, benefits, a call to action, and 8-10 relevant hashtags.
-
-Facebook Ad Headline:
-Under 40 characters. Attention-grabbing, benefit-led.
-
-Facebook Ad Primary Text:
-2-3 sentences of conversion-focused ad copy.
-
-Facebook Ad CTA:
-A single short call-to-action phrase (e.g. "Shop Now", "Get Yours Today").
-
-WhatsApp Promotion:
-Create short promotional message.
-
-FAQ:
-Create 5 common customer questions with answers.
-
-Specifications:
-Create professional product specifications.
-
-IMPORTANT:
-You must generate all 12 sections listed above, in this exact order, with no section left blank. Even if a section feels repetitive, write real content for it anyway.
-Separate every section using exactly:
-${SPLIT_TOKEN}
-
-Return only the generated content.
-`;
-}
-
-
-// ======================================================
-// Parse AI Sections
-// ======================================================
-
-function parseSections(text = "") {
-  const sections = text.split(SPLIT_TOKEN).map(s => s.trim());
-
-  return {
-    marketplace: sections[0] || "",
-    seoTitle: sections[1] || "",
-    seoMeta: sections[2] || "",
-    keywords: sections[3] || "",
-    instagramShort: sections[4] || "",
-    instagramLong: sections[5] || "",
-    facebookHeadline: sections[6] || "",
-    facebookPrimaryText: sections[7] || "",
-    facebookCTA: sections[8] || "",
-    whatsapp: sections[9] || "",
-    faq: sections[10] || "",
-    specifications: sections[11] || ""
-  };
-}
-
-
-// ======================================================
-// Gemini API Call
+// Gemini API Call (JSON mode)
 // ======================================================
 
 function createGeminiBody(prompt) {
   return {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
-      temperature: 0.85,
+      temperature: 0.8,
       topP: 0.95,
-      maxOutputTokens: 8192
+      maxOutputTokens: 8192,
+      responseMimeType: "application/json"
     }
   };
 }
@@ -262,6 +107,37 @@ async function callGeminiWithRetry(apiKey, prompt) {
       await new Promise(resolve => setTimeout(resolve, attempt * 1500));
     }
   }
+}
+
+
+// ======================================================
+// Safe JSON Parsing (strip markdown fences if present)
+// ======================================================
+
+const EXPECTED_KEYS = [
+  "marketplace", "seoTitle", "seoMeta", "keywords",
+  "instagramShort", "instagramLong",
+  "facebookHeadline", "facebookPrimaryText", "facebookCTA",
+  "whatsapp", "faq", "specifications"
+];
+
+function parseAIResponse(text = "") {
+  const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (err) {
+    console.error("JSON parse failed:", err.message, "Raw text:", cleaned.slice(0, 500));
+    throw new Error("AI response was not valid JSON");
+  }
+
+  const result = {};
+  EXPECTED_KEYS.forEach(key => {
+    result[key] = typeof parsed[key] === "string" ? parsed[key].trim() : "";
+  });
+
+  return result;
 }
 
 
@@ -304,11 +180,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, errors });
     }
 
+    const rawPlatform = cleanInput(body.platform || "").toLowerCase();
+    const platform = PLATFORM_GUIDANCE[rawPlatform] ? rawPlatform : "";
+
     const product = {
       name: cleanInput(body.name),
       features: cleanInput(body.features),
       tone: cleanInput(body.tone),
-      platform: cleanInput(body.platform || "")
+      platform
     };
 
     const prompt = buildPrompt(product);
@@ -318,7 +197,7 @@ export default async function handler(req, res) {
       return res.status(502).json(errorResponse("AI returned empty response"));
     }
 
-    const result = parseSections(aiText);
+    const result = parseAIResponse(aiText);
 
     return res.status(200).json({ success: true, data: result });
 
