@@ -133,6 +133,15 @@ select.field-input{cursor:pointer;}
     <p id="regionNote" style="color:#8892b0;font-size:13px;margin-top:20px;"></p>
   </div>
 
+  <div class="glass" id="bulkSection" style="padding:40px;margin-bottom:35px;">
+    <h2 style="font-size:24px;margin-bottom:10px;">📦 Bulk Import (CSV)</h2>
+    <p style="color:var(--muted);margin-bottom:20px;">Upload a CSV with columns: <code>name</code>, <code>features</code>, and optionally <code>platform</code> and <code>tone</code>. Get descriptions back for every row.</p>
+    <input type="file" id="csvInput" accept=".csv" class="field-input" style="padding:12px;" />
+    <button id="bulkBtn" class="gen-btn" style="margin-top:6px;">Process CSV</button>
+    <div id="bulkStatus" style="margin-top:14px;color:var(--muted);font-size:14px;"></div>
+    <div id="bulkDownloadWrap" style="margin-top:14px;"></div>
+  </div>
+
   <div id="resultsWrap"></div>
 
   <div class="glass" style="padding:40px;margin-top:35px;">
@@ -414,6 +423,147 @@ btn.addEventListener("click", async () => {
     btn.disabled = false;
     btn.innerHTML = "✨ Generate AI Description";
   }
+});
+
+// ======================================================
+// Bulk CSV Import
+// ======================================================
+
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^"|"$/g, ""));
+  const rows = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    // Basic CSV split that handles simple quoted commas
+    const cells = lines[i].match(/(".*?"|[^,]+)(?=,|$)/g) || [];
+    const row = {};
+    headers.forEach((h, idx) => {
+      row[h] = (cells[idx] || "").trim().replace(/^"|"$/g, "");
+    });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function toCSV(rows) {
+  const headers = ["name", "platform", "marketplace", "seoTitle", "seoMeta"];
+  const escape = v => `"${String(v || "").replace(/"/g, '""')}"`;
+  const lines = [headers.join(",")];
+  rows.forEach(r => {
+    lines.push(headers.map(h => escape(r[h])).join(","));
+  });
+  return lines.join("\n");
+}
+
+document.getElementById("bulkBtn").addEventListener("click", async () => {
+  const fileInput = document.getElementById("csvInput");
+  const statusEl = document.getElementById("bulkStatus");
+  const downloadWrap = document.getElementById("bulkDownloadWrap");
+  const bulkBtn = document.getElementById("bulkBtn");
+  downloadWrap.innerHTML = "";
+
+  if (!fileInput.files.length) {
+    statusEl.textContent = "Please choose a CSV file first.";
+    return;
+  }
+
+  const subscribed = isSubscribed();
+  const maxRows = subscribed ? 15 : 3;
+
+  const text = await fileInput.files[0].text();
+  let rows;
+  try {
+    rows = parseCSV(text);
+  } catch (e) {
+    statusEl.textContent = "Couldn't read that CSV. Make sure it has name and features columns.";
+    return;
+  }
+
+  if (rows.length === 0) {
+    statusEl.textContent = "No rows found in that CSV.";
+    return;
+  }
+
+  if (rows.length > maxRows) {
+    statusEl.textContent = subscribed
+      ? `Batches are capped at ${maxRows} rows at a time — please split larger files.`
+      : `Free tier allows ${maxRows} rows per batch. Upgrade for up to 15 rows per batch.`;
+    return;
+  }
+
+  if (!subscribed) {
+    const usage = getUsage();
+    if (usage.count + rows.length > DAILY_LIMIT) {
+      statusEl.textContent = `This batch needs ${rows.length} generations, but you only have ${Math.max(0, DAILY_LIMIT - usage.count)} left today.`;
+      return;
+    }
+  }
+
+  bulkBtn.disabled = true;
+  const results = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    statusEl.textContent = `Processing row ${i + 1} of ${rows.length}: ${row.name || "(unnamed)"}...`;
+
+    if (!row.name || !row.features) {
+      results.push({ name: row.name || "(missing name)", platform: row.platform || "", marketplace: "SKIPPED — missing name or features", seoTitle: "", seoMeta: "" });
+      continue;
+    }
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: row.name,
+          features: row.features,
+          tone: row.tone || "warm and handmade",
+          platform: row.platform || ""
+        })
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        results.push({ name: row.name, platform: row.platform || "", ...json.data });
+        if (!subscribed) {
+          const usage = getUsage();
+          usage.count++;
+          setUsage(usage);
+          updateCounter();
+        }
+      } else {
+        results.push({ name: row.name, platform: row.platform || "", marketplace: "ERROR — generation failed", seoTitle: "", seoMeta: "" });
+      }
+    } catch (err) {
+      results.push({ name: row.name, platform: row.platform || "", marketplace: "ERROR — request failed", seoTitle: "", seoMeta: "" });
+    }
+
+    // Small delay between requests to be gentle on the AI provider's rate limits
+    if (i < rows.length - 1) {
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+
+  statusEl.textContent = `Done — processed ${rows.length} rows.`;
+  bulkBtn.disabled = false;
+
+  const csvOutput = toCSV(results);
+  const blob = new Blob([csvOutput], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  downloadWrap.innerHTML = "";
+  const dlBtn = document.createElement("a");
+  dlBtn.href = url;
+  dlBtn.download = "descgen-bulk-results.csv";
+  dlBtn.className = "gen-btn";
+  dlBtn.style.display = "inline-block";
+  dlBtn.style.textDecoration = "none";
+  dlBtn.style.textAlign = "center";
+  dlBtn.textContent = "⬇️ Download Results CSV";
+  downloadWrap.appendChild(dlBtn);
 });
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
