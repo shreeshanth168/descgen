@@ -28,12 +28,16 @@ a.btn{display:inline-block;padding:16px 30px;border-radius:14px;background:linea
 </div>
 
 <script>
-// Basic mitigation: only unlock if the visitor actually arrived from Razorpay.
-// This is NOT a full fix — a determined person can still spoof a referrer —
-// but it blocks the casual "just type the URL" exploit.
-const cameFromRazorpay = document.referrer.includes("razorpay.com") || document.referrer.includes("rzp.io");
+// Check Razorpay's own redirect confirmation instead of document.referrer,
+// since payment gateways often strip/omit referrer on redirect — that was
+// causing legitimate paying customers to get incorrectly blocked.
+const params = new URLSearchParams(window.location.search);
+const paymentId = params.get("razorpay_payment_id");
+const linkStatus = params.get("razorpay_payment_link_status");
 
-if (cameFromRazorpay) {
+const paymentConfirmed = !!paymentId || linkStatus === "paid";
+
+if (paymentConfirmed) {
   localStorage.setItem("descgen_subscribed", "true");
   localStorage.setItem("descgen_subscribed_date", new Date().toISOString());
 } else {
