@@ -11,43 +11,95 @@
 body{font-family:'Inter',sans-serif;background:#050816;color:#fff;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;}
 .wrap{max-width:480px;margin:auto;padding:40px 24px;text-align:center;}
 .glass{background:rgba(255,255,255,.08);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.14);border-radius:24px;padding:40px;}
-h1{font-size:30px;margin-bottom:14px;}
-p{color:#A7B6D6;line-height:1.7;margin-bottom:26px;}
+h1{font-size:28px;margin-bottom:14px;}
+p{color:#A7B6D6;line-height:1.7;margin-bottom:22px;}
+input{width:100%;padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:15px;margin-bottom:16px;box-sizing:border-box;}
+button{width:100%;padding:16px;border-radius:14px;border:none;background:linear-gradient(135deg,#8B5CF6,#2563EB);color:white;font-weight:700;font-size:15px;cursor:pointer;}
+button:disabled{opacity:.6;cursor:not-allowed;}
 a.btn{display:inline-block;padding:16px 30px;border-radius:14px;background:linear-gradient(135deg,#8B5CF6,#2563EB);color:white;text-decoration:none;font-weight:700;}
-.emoji{font-size:56px;margin-bottom:14px;}
+.emoji{font-size:48px;margin-bottom:14px;}
+.error{color:#ff8080;font-size:14px;margin-top:-8px;margin-bottom:14px;}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="glass">
-    <div class="emoji">🎉</div>
-    <h1>You're All Set!</h1>
-    <p>Thanks for subscribing to DescGen AI. Unlimited generations are now unlocked on this browser.</p>
-    <a class="btn" href="/index.html">Start Generating →</a>
+  <div class="glass" id="content">
+    <!-- filled in by script -->
   </div>
 </div>
 
 <script>
-// Check Razorpay's own redirect confirmation instead of document.referrer,
-// since payment gateways often strip/omit referrer on redirect — that was
-// causing legitimate paying customers to get incorrectly blocked.
+const content = document.getElementById("content");
 const params = new URLSearchParams(window.location.search);
 const paymentId = params.get("razorpay_payment_id");
 const linkStatus = params.get("razorpay_payment_link_status");
-
 const paymentConfirmed = !!paymentId || linkStatus === "paid";
 
+function showError(msg) {
+  content.innerHTML = `
+    <div class="emoji">⚠️</div>
+    <h1>Hmm, That's Not Right</h1>
+    <p>${msg}</p>
+    <a class="btn" href="/index.html">Back to DescGen AI</a>`;
+}
+
+function showEmailForm() {
+  content.innerHTML = `
+    <div class="emoji">🎉</div>
+    <h1>Almost Done!</h1>
+    <p>Enter the email you used during checkout so we can confirm your subscription.</p>
+    <input type="email" id="emailInput" placeholder="you@example.com" />
+    <div class="error" id="verifyError"></div>
+    <button id="verifyBtn">Confirm Subscription</button>
+  `;
+
+  document.getElementById("verifyBtn").addEventListener("click", async () => {
+    const email = document.getElementById("emailInput").value.trim();
+    const errorEl = document.getElementById("verifyError");
+    const btn = document.getElementById("verifyBtn");
+    errorEl.textContent = "";
+
+    if (!email || !email.includes("@")) {
+      errorEl.textContent = "Please enter a valid email.";
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Checking...";
+
+    try {
+      const res = await fetch("/api/check-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+
+      if (data.subscribed) {
+        localStorage.setItem("descgen_subscribed", "true");
+        localStorage.setItem("descgen_email", email.toLowerCase().trim());
+        content.innerHTML = `
+          <div class="emoji">✅</div>
+          <h1>You're All Set!</h1>
+          <p>Unlimited generations are now unlocked on this browser.</p>
+          <a class="btn" href="/index.html">Start Generating →</a>`;
+      } else {
+        errorEl.textContent = "We couldn't find a subscription for that email yet. Payments can take up to a minute to process — please wait a moment and try again.";
+        btn.disabled = false;
+        btn.textContent = "Confirm Subscription";
+      }
+    } catch (err) {
+      errorEl.textContent = "Something went wrong. Please try again.";
+      btn.disabled = false;
+      btn.textContent = "Confirm Subscription";
+    }
+  });
+}
+
 if (paymentConfirmed) {
-  localStorage.setItem("descgen_subscribed", "true");
-  localStorage.setItem("descgen_subscribed_date", new Date().toISOString());
+  showEmailForm();
 } else {
-  document.querySelector(".wrap").innerHTML = `
-    <div class="glass">
-      <div class="emoji">⚠️</div>
-      <h1>Hmm, That's Not Right</h1>
-      <p>This page is only reachable after completing a payment. If you believe this is an error, please contact support.</p>
-      <a class="btn" href="/index.html">Back to DescGen AI</a>
-    </div>`;
+  showError("This page is only reachable after completing a payment. If you believe this is an error, please contact support.");
 }
 </script>
 </body>
