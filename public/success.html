@@ -30,10 +30,6 @@ a.btn{display:inline-block;padding:16px 30px;border-radius:14px;background:linea
 
 <script>
 const content = document.getElementById("content");
-const params = new URLSearchParams(window.location.search);
-const paymentId = params.get("razorpay_payment_id");
-const linkStatus = params.get("razorpay_payment_link_status");
-const paymentConfirmed = !!paymentId || linkStatus === "paid";
 
 function showError(msg) {
   content.innerHTML = `
@@ -96,11 +92,7 @@ function showEmailForm() {
   });
 }
 
-if (paymentConfirmed) {
-  showEmailForm();
-} else {
-  showError("This page is only reachable after completing a payment. If you believe this is an error, please contact support.");
-}
+showEmailForm();
 </script>
 </body>
 </html>
