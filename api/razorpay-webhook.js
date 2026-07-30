@@ -1,26 +1,64 @@
 // ======================================================
-// Razorpay Webhook Handler
-// Razorpay's own servers call this directly when a payment
-// succeeds — this cannot be faked by a user's browser.
+// Razorpay Webhook Handler (signature-verified)
+// Only requests carrying a valid HMAC signature from Razorpay
+// are trusted — anything else is rejected outright.
 // ======================================================
+
+import crypto from "crypto";
+
+// Vercel normally parses the JSON body automatically, but signature
+// verification requires the exact raw bytes Razorpay signed — so we
+// disable the automatic parser and read the raw body ourselves.
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};
+
+function readRawBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    req.on("data", chunk => { data += chunk; });
+    req.on("end", () => resolve(data));
+    req.on("error", reject);
+  });
+}
+
+function isValidSignature(rawBody, signatureHeader, secret) {
+  if (!signatureHeader || !secret) return false;
+  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureHeader));
+  } catch {
+    return false; // lengths differ, definitely not a match
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
-  if (!supabaseUrl || !supabaseKey) {
-    console.error("Missing Supabase credentials");
+  if (!webhookSecret || !supabaseUrl || !supabaseKey) {
+    console.error("Missing required environment variables");
     return res.status(500).json({ error: "Server misconfigured" });
   }
 
-  try {
-    const event = req.body;
+  const rawBody = await readRawBody(req);
+  const signature = req.headers["x-razorpay-signature"];
 
-    // Only act on successful payment events
+  if (!isValidSignature(rawBody, signature, webhookSecret)) {
+    console.error("Webhook signature verification FAILED — request rejected");
+    return res.status(401).json({ error: "Invalid signature" });
+  }
+
+  try {
+    const event = JSON.parse(rawBody);
+
     if (event.event !== "payment_link.paid" && event.event !== "payment.captured") {
       return res.status(200).json({ received: true, skipped: true });
     }
@@ -35,11 +73,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing payment id or email" });
     }
 
-    // Determine plan from amount (₹199 = 19900 paise, ₹1999 = 199900 paise)
     let plan = "monthly";
     if (amount >= 199900) plan = "annual";
 
-    // Write to Supabase
     const response = await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
       method: "POST",
       headers: {
