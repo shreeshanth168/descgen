@@ -176,6 +176,61 @@ function isAllowedOrigin(req) {
 
 
 // ======================================================
+// Plan limits
+// ======================================================
+
+const PLAN_LIMITS = {
+  monthly: 300, // ₹199 plan
+  annual: 300
+};
+
+async function checkAndTrackUsage(email, supabaseUrl, supabaseKey) {
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/subscriptions?email=eq.${encodeURIComponent(email)}&status=eq.active&select=id,plan,unlimited,generations_used,period_start&limit=1`,
+    { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+  );
+  if (!res.ok) return { allowed: true }; // fail open for free/unauthenticated flows
+
+  const rows = await res.json();
+  if (!rows.length) return { allowed: true, notSubscribed: true };
+
+  const row = rows[0];
+  if (row.unlimited) return { allowed: true };
+
+  const limit = PLAN_LIMITS[row.plan] || 300;
+  const periodStart = new Date(row.period_start);
+  const now = new Date();
+  const daysSince = (now - periodStart) / (1000 * 60 * 60 * 24);
+
+  let used = row.generations_used || 0;
+  let newPeriodStart = row.period_start;
+
+  if (daysSince >= 30) {
+    used = 0;
+    newPeriodStart = now.toISOString();
+  }
+
+  if (used >= limit) {
+    return { allowed: false, limit };
+  }
+
+  // Track this usage
+  await fetch(`${supabaseUrl}/rest/v1/subscriptions?id=eq.${row.id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify({ generations_used: used + 1, period_start: newPeriodStart })
+  });
+
+  return { allowed: true };
+}
+
+
+// ======================================================
 // Vercel Serverless Function
 // ======================================================
 
@@ -189,6 +244,9 @@ export default async function handler(req, res) {
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+
   if (!apiKey) {
     return res.status(500).json(errorResponse("GEMINI_API_KEY is missing"));
   }
@@ -199,6 +257,16 @@ export default async function handler(req, res) {
 
     if (errors.length > 0) {
       return res.status(400).json({ success: false, errors });
+    }
+
+    const email = (body.email || "").toLowerCase().trim();
+    if (email && supabaseUrl && supabaseKey) {
+      const usage = await checkAndTrackUsage(email, supabaseUrl, supabaseKey);
+      if (!usage.allowed) {
+        return res.status(403).json(errorResponse(
+          `You've reached your plan's limit of ${usage.limit} generations this month. Upgrade or wait for your next billing cycle.`
+        ));
+      }
     }
 
     const rawPlatform = cleanInput(body.platform || "").toLowerCase();
