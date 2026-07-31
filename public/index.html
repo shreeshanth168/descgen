@@ -58,9 +58,61 @@ select.field-input{cursor:pointer;}
 .copyBtn,.copyAllBtn{padding:10px 18px;border:none;border-radius:12px;background:#8B5CF6;color:white;cursor:pointer;font-size:14px;font-weight:600;}
 .copyAllBtn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);}
 @media(max-width:768px){.logo{font-size:44px;}.hero-title{font-size:32px;}.hero-sub{font-size:16px;}}
+
+/* Profile bar */
+.profileBar{position:fixed;top:16px;right:16px;z-index:100;display:flex;align-items:center;gap:10px;}
+.profileChip{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:999px;background:rgba(255,255,255,.08);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.14);font-size:13px;cursor:pointer;}
+.planBadge{padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;}
+.planBadge.free{background:rgba(255,255,255,.1);color:var(--muted);}
+.planBadge.pro{background:linear-gradient(135deg,#8B5CF6,#2563EB);color:#fff;}
+.signInBtn{padding:10px 20px;border-radius:999px;border:none;background:linear-gradient(135deg,#8B5CF6,#2563EB);color:#fff;font-weight:700;font-size:13px;cursor:pointer;}
+.profileMenu{position:absolute;top:52px;right:0;background:#0f1428;border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:10px;min-width:180px;display:none;box-shadow:0 20px 40px rgba(0,0,0,.4);}
+.profileMenu.open{display:block;}
+.profileMenu button{width:100%;padding:10px;border:none;background:transparent;color:#fff;text-align:left;border-radius:8px;cursor:pointer;font-size:13px;}
+.profileMenu button:hover{background:rgba(255,255,255,.08);}
+
+/* Auth modal */
+.authOverlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+.authOverlay.open{display:flex;}
+.authBox{background:#0b0f22;border:1px solid rgba(255,255,255,.14);border-radius:24px;padding:36px;max-width:400px;width:100%;}
+.authBox h2{font-size:22px;margin-bottom:8px;}
+.authBox p{color:var(--muted);font-size:14px;margin-bottom:20px;}
+.authInput{width:100%;padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:15px;margin-bottom:14px;box-sizing:border-box;}
+.authBtn{width:100%;padding:15px;border-radius:12px;border:none;background:linear-gradient(135deg,#8B5CF6,#2563EB);color:#fff;font-weight:700;font-size:15px;cursor:pointer;}
+.authBtn:disabled{opacity:.6;cursor:not-allowed;}
+.authSwitch{text-align:center;margin-top:16px;font-size:13px;color:var(--muted);}
+.authSwitch a{color:#A78BFA;cursor:pointer;}
+.authError{color:#ff8080;font-size:13px;margin-top:-6px;margin-bottom:12px;min-height:16px;}
+.authClose{position:absolute;top:16px;right:20px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
 </style>
 </head>
 <body>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+<div class="profileBar" id="profileBar">
+  <button class="signInBtn" id="signInBtn" style="display:none;">Sign In</button>
+  <div class="profileChip" id="profileChip" style="display:none;position:relative;">
+    <span id="profileEmail"></span>
+    <span class="planBadge free" id="planBadge">Free</span>
+    <div class="profileMenu" id="profileMenu">
+      <button id="logoutBtn">Log Out</button>
+    </div>
+  </div>
+</div>
+
+<div class="authOverlay" id="authOverlay">
+  <div class="authBox" style="position:relative;">
+    <button class="authClose" id="authClose">✕</button>
+    <h2 id="authTitle">Sign In</h2>
+    <p id="authSubtitle">Sign in to start generating descriptions.</p>
+    <input type="email" id="authEmail" class="authInput" placeholder="you@example.com" />
+    <input type="password" id="authPassword" class="authInput" placeholder="Password" />
+    <div class="authError" id="authError"></div>
+    <button class="authBtn" id="authSubmit">Sign In</button>
+    <div class="authSwitch" id="authSwitch">Don't have an account? <a id="authToggle">Sign up</a></div>
+  </div>
+</div>
+
 <div class="blob one"></div><div class="blob two"></div><div class="blob three"></div>
 
 <header>
@@ -190,6 +242,174 @@ select.field-input{cursor:pointer;}
 </footer>
 
 <script>
+// ======================================================
+// Supabase Auth
+// ======================================================
+
+const SUPABASE_URL = "https://flwxpsvbknphyltvdhrk.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_E2vDElm4rPnAfiZ-nQ2Evg_DmnEUfzt";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let currentPlan = "free"; // "free" or "pro" — refreshed after login
+let pendingAction = null; // function to run once login succeeds
+
+const signInBtn = document.getElementById("signInBtn");
+const profileChip = document.getElementById("profileChip");
+const profileEmail = document.getElementById("profileEmail");
+const planBadge = document.getElementById("planBadge");
+const profileMenu = document.getElementById("profileMenu");
+const authOverlay = document.getElementById("authOverlay");
+const authTitle = document.getElementById("authTitle");
+const authSubtitle = document.getElementById("authSubtitle");
+const authSwitch = document.getElementById("authSwitch");
+const authToggle = document.getElementById("authToggle");
+const authError = document.getElementById("authError");
+const authSubmit = document.getElementById("authSubmit");
+const authEmail = document.getElementById("authEmail");
+const authPassword = document.getElementById("authPassword");
+
+let authMode = "signin"; // or "signup"
+
+function openAuthModal(action) {
+  pendingAction = action || null;
+  authError.textContent = "";
+  authEmail.value = "";
+  authPassword.value = "";
+  setAuthMode("signin");
+  authOverlay.classList.add("open");
+}
+
+function closeAuthModal() {
+  authOverlay.classList.remove("open");
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  if (mode === "signin") {
+    authTitle.textContent = "Sign In";
+    authSubtitle.textContent = "Sign in to start generating descriptions.";
+    authSubmit.textContent = "Sign In";
+    authSwitch.innerHTML = `Don't have an account? <a id="authToggle">Sign up</a>`;
+  } else {
+    authTitle.textContent = "Create Account";
+    authSubtitle.textContent = "Sign up to start generating descriptions.";
+    authSubmit.textContent = "Sign Up";
+    authSwitch.innerHTML = `Already have an account? <a id="authToggle">Sign in</a>`;
+  }
+  document.getElementById("authToggle").addEventListener("click", () => {
+    setAuthMode(authMode === "signin" ? "signup" : "signin");
+  });
+}
+
+document.getElementById("authClose").addEventListener("click", closeAuthModal);
+
+authSubmit.addEventListener("click", async () => {
+  const email = authEmail.value.trim();
+  const password = authPassword.value;
+  authError.textContent = "";
+
+  if (!email || !email.includes("@")) {
+    authError.textContent = "Please enter a valid email.";
+    return;
+  }
+  if (!password || password.length < 6) {
+    authError.textContent = "Password must be at least 6 characters.";
+    return;
+  }
+
+  authSubmit.disabled = true;
+  authSubmit.textContent = authMode === "signin" ? "Signing in..." : "Signing up...";
+
+  try {
+    let result;
+    if (authMode === "signin") {
+      result = await supabaseClient.auth.signInWithPassword({ email, password });
+    } else {
+      result = await supabaseClient.auth.signUp({ email, password });
+    }
+
+    if (result.error) {
+      authError.textContent = result.error.message;
+      authSubmit.disabled = false;
+      authSubmit.textContent = authMode === "signin" ? "Sign In" : "Sign Up";
+      return;
+    }
+
+    await refreshAuthState();
+    closeAuthModal();
+
+    if (pendingAction) {
+      const action = pendingAction;
+      pendingAction = null;
+      action();
+    }
+  } catch (err) {
+    authError.textContent = "Something went wrong. Please try again.";
+  } finally {
+    authSubmit.disabled = false;
+    authSubmit.textContent = authMode === "signin" ? "Sign In" : "Sign Up";
+  }
+});
+
+signInBtn.addEventListener("click", () => openAuthModal(null));
+
+profileChip.addEventListener("click", (e) => {
+  if (e.target.id === "logoutBtn") return;
+  profileMenu.classList.toggle("open");
+});
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+  currentPlan = "free";
+  updateProfileUI();
+  profileMenu.classList.remove("open");
+});
+
+async function refreshAuthState() {
+  const { data } = await supabaseClient.auth.getSession();
+  currentUser = data.session ? data.session.user : null;
+
+  if (currentUser) {
+    try {
+      const res = await fetch("/api/check-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: currentUser.email })
+      });
+      const subData = await res.json();
+      currentPlan = subData.subscribed ? "pro" : "free";
+    } catch {
+      currentPlan = "free";
+    }
+  }
+  updateProfileUI();
+}
+
+function updateProfileUI() {
+  if (currentUser) {
+    signInBtn.style.display = "none";
+    profileChip.style.display = "flex";
+    profileEmail.textContent = currentUser.email;
+    planBadge.textContent = currentPlan === "pro" ? "Pro" : "Free";
+    planBadge.className = "planBadge " + (currentPlan === "pro" ? "pro" : "free");
+  } else {
+    signInBtn.style.display = "inline-block";
+    profileChip.style.display = "none";
+  }
+}
+
+function requireLogin(action) {
+  if (currentUser) {
+    action();
+  } else {
+    openAuthModal(action);
+  }
+}
+
+refreshAuthState();
+
 const DAILY_LIMIT = 3;
 
 function escapeHtml(str) {
@@ -375,7 +595,7 @@ function renderResults(data) {
   resultsWrap.appendChild(panels);
 }
 
-btn.addEventListener("click", async () => {
+async function doGenerate() {
   errorEl.textContent = "";
   const subscribed = isSubscribed();
   const usage = getUsage();
@@ -423,6 +643,10 @@ btn.addEventListener("click", async () => {
     btn.disabled = false;
     btn.innerHTML = "✨ Generate AI Description";
   }
+}
+
+btn.addEventListener("click", () => {
+  requireLogin(doGenerate);
 });
 
 // ======================================================
