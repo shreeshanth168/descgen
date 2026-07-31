@@ -88,6 +88,7 @@ select.field-input{cursor:pointer;}
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
 <div class="profileBar" id="profileBar">
   <button class="signInBtn" id="signInBtn" style="display:none;">Sign In</button>
@@ -107,8 +108,9 @@ select.field-input{cursor:pointer;}
     <p id="authSubtitle">Sign in to start generating descriptions.</p>
     <input type="email" id="authEmail" class="authInput" placeholder="you@example.com" />
     <input type="password" id="authPassword" class="authInput" placeholder="Password" />
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAAECp_j8tE-rlIRZO" data-callback="onTurnstileSuccess" style="margin-bottom:14px;"></div>
     <div class="authError" id="authError"></div>
-    <button class="authBtn" id="authSubmit">Sign In</button>
+    <button class="authBtn" id="authSubmit" disabled>Verifying...</button>
     <div class="authSwitch" id="authSwitch">Don't have an account? <a id="authToggle">Sign up</a></div>
   </div>
 </div>
@@ -270,6 +272,22 @@ const authEmail = document.getElementById("authEmail");
 const authPassword = document.getElementById("authPassword");
 
 let authMode = "signin"; // or "signup"
+let turnstileToken = null;
+
+window.onTurnstileSuccess = function(token) {
+  turnstileToken = token;
+  authSubmit.disabled = false;
+  authSubmit.textContent = authMode === "signin" ? "Sign In" : "Sign Up";
+};
+
+function resetTurnstile() {
+  turnstileToken = null;
+  authSubmit.disabled = true;
+  authSubmit.textContent = "Verifying...";
+  if (window.turnstile) {
+    try { window.turnstile.reset(); } catch {}
+  }
+}
 
 function openAuthModal(action) {
   pendingAction = action || null;
@@ -277,6 +295,7 @@ function openAuthModal(action) {
   authEmail.value = "";
   authPassword.value = "";
   setAuthMode("signin");
+  resetTurnstile();
   authOverlay.classList.add("open");
 }
 
@@ -317,11 +336,28 @@ authSubmit.addEventListener("click", async () => {
     authError.textContent = "Password must be at least 6 characters.";
     return;
   }
+  if (!turnstileToken) {
+    authError.textContent = "Please complete the verification check.";
+    return;
+  }
 
   authSubmit.disabled = true;
   authSubmit.textContent = authMode === "signin" ? "Signing in..." : "Signing up...";
 
   try {
+    const verifyRes = await fetch("/api/verify-turnstile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: turnstileToken })
+    });
+    const verifyData = await verifyRes.json();
+
+    if (!verifyData.success) {
+      authError.textContent = "Verification failed. Please try again.";
+      resetTurnstile();
+      return;
+    }
+
     let result;
     if (authMode === "signin") {
       result = await supabaseClient.auth.signInWithPassword({ email, password });
