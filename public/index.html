@@ -658,7 +658,7 @@ async function doGenerate() {
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, features, tone, platform })
+      body: JSON.stringify({ name, features, tone, platform, email: currentUser ? currentUser.email : "" })
     });
 
     if (!res.ok) throw new Error("Failed to generate descriptions.");
