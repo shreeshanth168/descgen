@@ -89,6 +89,67 @@ select.field-input{cursor:pointer;}
 .authSwitch a{color:#A78BFA;cursor:pointer;}
 .authError{color:#ff8080;font-size:13px;margin-top:-6px;margin-bottom:12px;min-height:16px;}
 .authClose{position:absolute;top:16px;right:20px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
+
+/* ============ Motion Graphics ============ */
+
+/* Hero entrance */
+@keyframes heroFadeUp{
+  from{opacity:0;transform:translateY(24px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.logo{animation:heroFadeUp .8s cubic-bezier(.22,1,.36,1) both;}
+.hero-title{animation:heroFadeUp .8s cubic-bezier(.22,1,.36,1) .12s both;}
+.hero-sub{animation:heroFadeUp .8s cubic-bezier(.22,1,.36,1) .22s both;}
+.badges{animation:heroFadeUp .8s cubic-bezier(.22,1,.36,1) .32s both;}
+.badges .badge{animation:heroFadeUp .6s cubic-bezier(.22,1,.36,1) both;}
+.badges .badge:nth-child(1){animation-delay:.38s;}
+.badges .badge:nth-child(2){animation-delay:.46s;}
+.badges .badge:nth-child(3){animation-delay:.54s;}
+.badges .badge:nth-child(4){animation-delay:.62s;}
+.badge{transition:transform .25s ease, border-color .25s ease;}
+.badge:hover{transform:translateY(-3px);border-color:rgba(139,92,246,.5);}
+
+.logo{position:relative;background-size:200% auto;animation:heroFadeUp .8s cubic-bezier(.22,1,.36,1) both, shimmer 6s linear infinite 1s;}
+@keyframes shimmer{
+  0%{background-position:0% center;}
+  100%{background-position:200% center;}
+}
+
+/* Generate button micro-interactions */
+.gen-btn{position:relative;overflow:hidden;transition:transform .18s ease, box-shadow .25s ease;}
+.gen-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 26px 50px rgba(139,92,246,.5);}
+.gen-btn:active:not(:disabled){transform:translateY(0) scale(.98);}
+.gen-btn::after{
+  content:"";position:absolute;top:50%;left:50%;width:0;height:0;
+  background:rgba(255,255,255,.25);border-radius:50%;transform:translate(-50%,-50%);
+  transition:width .5s ease, height .5s ease, opacity .5s ease;opacity:0;
+}
+.gen-btn:active:not(:disabled)::after{width:300px;height:300px;opacity:1;transition:0s;}
+
+/* Loading spinner */
+.spinnerDots{display:inline-flex;gap:5px;align-items:center;justify-content:center;}
+.spinnerDots span{width:8px;height:8px;border-radius:50%;background:currentColor;animation:dotPulse 1.1s ease-in-out infinite;}
+.spinnerDots span:nth-child(2){animation-delay:.15s;}
+.spinnerDots span:nth-child(3){animation-delay:.3s;}
+@keyframes dotPulse{
+  0%,60%,100%{opacity:.3;transform:scale(.7);}
+  30%{opacity:1;transform:scale(1);}
+}
+@keyframes spinRing{to{transform:rotate(360deg);}}
+.loadingRing{width:44px;height:44px;border-radius:50%;border:3px solid rgba(139,92,246,.2);border-top-color:#8B5CF6;margin:0 auto 20px;animation:spinRing .8s linear infinite;}
+
+/* Results reveal */
+@keyframes cardReveal{
+  from{opacity:0;transform:translateY(18px) scale(.98);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+.sectionCard{animation:cardReveal .5s cubic-bezier(.22,1,.36,1) both;}
+.tabbar .tabbtn{animation:cardReveal .4s cubic-bezier(.22,1,.36,1) both;}
+.tabbtn:nth-child(1){animation-delay:.05s;}
+.tabbtn:nth-child(2){animation-delay:.1s;}
+.tabbtn:nth-child(3){animation-delay:.15s;}
+.copyBtn{transition:transform .15s ease;}
+.copyBtn:active{transform:scale(.92);}
 </style>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3102274013269846" crossorigin="anonymous"></script>
 </head>
@@ -634,9 +695,9 @@ document.querySelectorAll(".subscribeBtn").forEach(btn => {
 
 function loadingState() {
   resultsWrap.innerHTML = `
-    <div class="glass" style="padding:35px;text-align:center;">
-      <div style="font-size:42px;margin-bottom:20px;">✨</div>
-      <h2>Generating Description...</h2>
+    <div class="glass" style="padding:40px;text-align:center;">
+      <div class="loadingRing"></div>
+      <h2>Generating Description<span class="spinnerDots" style="margin-left:6px;"><span></span><span></span><span></span></span></h2>
       <p style="color:var(--muted);margin-top:12px;">Our AI is writing your full content set.</p>
     </div>`;
 }
@@ -665,10 +726,11 @@ function renderResults(data) {
     };
     tabbar.appendChild(tabBtn);
 
-    available.forEach(key => {
+    available.forEach((key, cardIndex) => {
       const text = data[key];
       const card = document.createElement("div");
       card.className = "glass sectionCard";
+      card.style.animationDelay = `${cardIndex * 0.08}s`;
       card.innerHTML = `
         <h3>✨ ${tab.titles[key]}</h3>
         <div class="generatedText">${escapeHtml(text)}</div>
