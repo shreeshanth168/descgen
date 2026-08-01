@@ -4,9 +4,25 @@
 // whether an email has a real, verified paid subscription.
 // ======================================================
 
+const ALLOWED_ORIGINS = [
+  "https://www.descgenai.online",
+  "https://descgenai.online",
+  "https://descgen-delta.vercel.app"
+];
+
+function isAllowedOrigin(req) {
+  const origin = req.headers.origin || "";
+  const referer = req.headers.referer || "";
+  return ALLOWED_ORIGINS.some(o => origin.startsWith(o) || referer.startsWith(o));
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  if (!isAllowedOrigin(req)) {
+    return res.status(403).json({ error: "Forbidden" });
   }
 
   const supabaseUrl = process.env.SUPABASE_URL;
