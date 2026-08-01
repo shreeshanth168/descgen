@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     const cleanEmail = email.toLowerCase().trim();
 
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/subscriptions?email=eq.${encodeURIComponent(cleanEmail)}&status=eq.active&select=plan&limit=1`,
+      `${supabaseUrl}/rest/v1/subscriptions?email=eq.${encodeURIComponent(cleanEmail)}&status=eq.active&select=plan,unlimited,generations_used&limit=1`,
       {
         headers: {
           "apikey": supabaseKey,
@@ -45,7 +45,10 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       subscribed,
-      plan: subscribed ? rows[0].plan : null
+      plan: subscribed ? rows[0].plan : null,
+      unlimited: subscribed ? !!rows[0].unlimited : false,
+      generationsUsed: subscribed ? (rows[0].generations_used || 0) : 0,
+      limit: subscribed ? 300 : 0
     });
 
   } catch (error) {
