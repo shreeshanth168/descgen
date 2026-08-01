@@ -176,6 +176,32 @@ function isAllowedOrigin(req) {
 
 
 // ======================================================
+// Verify the real logged-in user via their Supabase session
+// token — never trust an email the client claims in the body.
+// ======================================================
+
+async function getVerifiedEmail(req, supabaseUrl, supabaseKey) {
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (!token || !supabaseUrl || !supabaseKey) return null;
+
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${token}`
+      }
+    });
+    if (!res.ok) return null;
+    const user = await res.json();
+    return user && user.email ? user.email.toLowerCase().trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+
+// ======================================================
 // Rate limiting — max requests per user in a rolling window
 // ======================================================
 
@@ -297,7 +323,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, errors });
     }
 
-    const email = (body.email || "").toLowerCase().trim();
+    const email = await getVerifiedEmail(req, supabaseUrl, supabaseKey);
 
     if (email && supabaseUrl && supabaseKey) {
       const rateCheck = await checkRateLimit(email, supabaseUrl, supabaseKey);
