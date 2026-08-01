@@ -85,8 +85,7 @@ select.field-input{cursor:pointer;}
 .authError{color:#ff8080;font-size:13px;margin-top:-6px;margin-bottom:12px;min-height:16px;}
 .authClose{position:absolute;top:16px;right:20px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
 </style>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3102274013269846"
-     crossorigin="anonymous"></script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3102274013269846" crossorigin="anonymous"></script>
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -167,28 +166,6 @@ select.field-input{cursor:pointer;}
     <div id="error" style="margin-top:10px;color:#ff8080;text-align:center;"></div>
   </div>
 
-  <div class="glass" id="pricingSection" style="padding:40px;margin-bottom:35px;text-align:center;">
-    <div class="badge" style="background:rgba(139,92,246,.18);border-color:rgba(139,92,246,.4);margin-bottom:16px;display:inline-block;">🎉 Early Adopter Pricing — Locked In For Life</div>
-    <h2 style="font-size:28px;margin-bottom:10px;">Go Unlimited</h2>
-    <p style="color:var(--muted);margin-bottom:30px;">Free plan includes 3 generations/day. Upgrade for unlimited, forever at this price.</p>
-
-    <div style="display:flex;justify-content:center;gap:20px;flex-wrap:wrap;">
-      <div class="glass" style="padding:30px;width:240px;">
-        <div style="color:var(--muted);font-size:14px;margin-bottom:6px;">Monthly</div>
-        <div id="priceMonthly" style="font-size:36px;font-weight:800;margin-bottom:4px;">—</div>
-        <div style="color:var(--muted);font-size:13px;margin-bottom:20px;">per month</div>
-        <button class="gen-btn subscribeBtn" data-plan="monthly" style="padding:14px;font-size:15px;">Subscribe Monthly</button>
-      </div>
-      <div class="glass" style="padding:30px;width:240px;border:1px solid rgba(139,92,246,.5);">
-        <div style="color:#A78BFA;font-size:14px;margin-bottom:6px;font-weight:700;">Annual · Best Value</div>
-        <div id="priceAnnual" style="font-size:36px;font-weight:800;margin-bottom:4px;">—</div>
-        <div style="color:var(--muted);font-size:13px;margin-bottom:20px;">per year</div>
-        <button class="gen-btn subscribeBtn" data-plan="annual" style="padding:14px;font-size:15px;">Subscribe Annually</button>
-      </div>
-    </div>
-    <p id="regionNote" style="color:#8892b0;font-size:13px;margin-top:20px;"></p>
-  </div>
-
   <div class="glass" id="bulkSection" style="padding:40px;margin-bottom:35px;">
     <h2 style="font-size:24px;margin-bottom:10px;">📦 Bulk Import (CSV)</h2>
     <p style="color:var(--muted);margin-bottom:20px;">Upload a CSV with columns: <code>name</code>, <code>features</code>, and optionally <code>platform</code> and <code>tone</code>. Get descriptions back for every row.</p>
@@ -199,6 +176,25 @@ select.field-input{cursor:pointer;}
   </div>
 
   <div id="resultsWrap"></div>
+
+  <div class="glass" id="pricingSection" style="padding:24px 28px;margin-top:35px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:4px;">✨ Go Pro — 300 generations/month (~10/day)</div>
+      <div id="regionNote" style="color:#8892b0;font-size:13px;"></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <span id="priceMonthly" style="font-size:20px;font-weight:800;">—</span>
+      <button class="gen-btn subscribeBtn" data-plan="monthly" style="padding:10px 18px;font-size:14px;width:auto;">Subscribe Monthly</button>
+      <span id="priceAnnual" style="font-size:20px;font-weight:800;margin-left:6px;">—</span>
+      <button class="gen-btn subscribeBtn" data-plan="annual" style="padding:10px 18px;font-size:14px;width:auto;">Subscribe Annually</button>
+    </div>
+  </div>
+
+  <div class="glass" style="padding:32px;margin-top:24px;">
+    <h2 style="font-size:22px;margin-bottom:6px;">💬 Have feedback or an issue?</h2>
+    <p style="color:var(--muted);margin-bottom:18px;">Let us know — we read every submission.</p>
+    <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScFTPkolzJxEwQCmLnhz0HxK_UrF7kGUp5-hr4BNtGlU3iHpA/viewform?embedded=true" width="100%" height="689" frameborder="0" style="border-radius:16px;">Loading…</iframe>
+  </div>
 
   <div class="glass" style="padding:40px;margin-top:35px;">
     <h2 style="font-size:26px;margin-bottom:16px;">How DescGen AI Works</h2>
@@ -405,6 +401,10 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
   profileMenu.classList.remove("open");
 });
 
+let currentUnlimited = false;
+let currentGenerationsUsed = 0;
+let currentLimit = 300;
+
 async function refreshAuthState() {
   const { data } = await supabaseClient.auth.getSession();
   currentUser = data.session ? data.session.user : null;
@@ -418,11 +418,15 @@ async function refreshAuthState() {
       });
       const subData = await res.json();
       currentPlan = subData.subscribed ? "pro" : "free";
+      currentUnlimited = !!subData.unlimited;
+      currentGenerationsUsed = subData.generationsUsed || 0;
+      currentLimit = subData.limit || 300;
     } catch {
       currentPlan = "free";
     }
   }
   updateProfileUI();
+  if (typeof updateCounter === "function") updateCounter();
 }
 
 function updateProfileUI() {
@@ -490,6 +494,15 @@ function isSubscribed() {
 }
 
 function updateCounter() {
+  if (currentUser && currentPlan === "pro") {
+    if (currentUnlimited) {
+      counter.innerHTML = `✨ <strong>Unlimited</strong> generations — thanks for subscribing!`;
+    } else {
+      const left = Math.max(0, currentLimit - currentGenerationsUsed);
+      counter.innerHTML = `✨ <strong>${left}</strong> of ${currentLimit} generations left this month`;
+    }
+    return;
+  }
   if (isSubscribed()) {
     counter.innerHTML = `✨ <strong>Unlimited</strong> generations — thanks for subscribing!`;
     return;
@@ -672,6 +685,9 @@ async function doGenerate() {
     if (!subscribed) {
       usage.count++;
       setUsage(usage);
+    }
+    if (currentUser && currentPlan === "pro") {
+      await refreshAuthState();
     }
     updateCounter();
   } catch (err) {
