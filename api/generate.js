@@ -176,6 +176,44 @@ function isAllowedOrigin(req) {
 
 
 // ======================================================
+// Rate limiting — max requests per user in a rolling window
+// ======================================================
+
+const RATE_LIMIT_MAX = 5;      // max generations
+const RATE_LIMIT_WINDOW_SEC = 60; // per this many seconds
+
+async function checkRateLimit(email, supabaseUrl, supabaseKey) {
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_SEC * 1000).toISOString();
+
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/rate_limits?email=eq.${encodeURIComponent(email)}&created_at=gte.${windowStart}&select=id`,
+    { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+  );
+
+  if (!res.ok) return { allowed: true }; // fail open rather than block everyone on an outage
+
+  const rows = await res.json();
+  if (Array.isArray(rows) && rows.length >= RATE_LIMIT_MAX) {
+    return { allowed: false };
+  }
+
+  // Log this attempt
+  await fetch(`${supabaseUrl}/rest/v1/rate_limits`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify({ email })
+  });
+
+  return { allowed: true };
+}
+
+
+// ======================================================
 // Plan limits
 // ======================================================
 
@@ -260,6 +298,16 @@ export default async function handler(req, res) {
     }
 
     const email = (body.email || "").toLowerCase().trim();
+
+    if (email && supabaseUrl && supabaseKey) {
+      const rateCheck = await checkRateLimit(email, supabaseUrl, supabaseKey);
+      if (!rateCheck.allowed) {
+        return res.status(429).json(errorResponse(
+          `You're generating too quickly. Please wait a minute and try again.`
+        ));
+      }
+    }
+
     if (email && supabaseUrl && supabaseKey) {
       const usage = await checkAndTrackUsage(email, supabaseUrl, supabaseKey);
       if (!usage.allowed) {
